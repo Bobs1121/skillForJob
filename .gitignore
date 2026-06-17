@@ -1,0 +1,16 @@
+# Profile 文件（每个仓库本地生成）
+repo_profile.json
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
+# IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
