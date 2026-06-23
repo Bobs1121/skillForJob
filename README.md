@@ -38,6 +38,11 @@ cp -r /path/to/claude-code-skills/skills/code-review .claude/skills/code-review
 | Skill | 命令 | 描述 |
 |-------|------|------|
 | code-review | `/review` | 自适应三层结构化代码审查 |
+| requirement-code-traceability | `$requirement-code-traceability` | 需求问答、代码一致性检查与实施方案 |
+
+## Solutions
+
+- [`solutions/requirements-code-assistant`](solutions/requirements-code-assistant/README.md)：原子需求 Vault、Requirements MCP、作用域化 CodeGraph MCP 与 Agent Skill。
 
 ## 添加新 Skill
 

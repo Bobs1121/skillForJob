@@ -1,0 +1,4 @@
+interface:
+  display_name: "Requirement-Code Traceability"
+  short_description: "Trace requirements to code and plan implementation"
+  default_prompt: "Use $requirement-code-traceability to retrieve requirements, compare them with code, and propose an implementation plan."
