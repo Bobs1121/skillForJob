@@ -68,10 +68,16 @@ description: >
 ```
 1. 确定目标 tag：G 列版本 → 代码仓 tag；**AI 先由数据推断出候选 tag 并列出依据 → 必须经用户确认后才算定案**（无 tag 则问用户分支）
 2. 内仓 algo_source 切分支/tag
-3. 更新 CUDA 表 + 车型 sheet：AI 由数据推断出车型与 CUDA 表来源（内仓 08_CustData、yaml 53/54 行，车型→sheet 映射）→ **先列出推断及依据，经用户确认后才改 yaml / 拷表**；探索不到则咨询用户
+3. 更新 CUDA 表 + 车型配置（两级：大集合文件夹 + 具体车型 sheet）：
+   AI 由数据推断出【大集合】与【具体车型】→ 列出推断及依据 → 用户确认后才改 yaml
+   - yaml 53 行 xlsx_path：内仓最新 CUDA 表文件名
+   - yaml 54 行 xlsx_sheet：具体车型 sheet（如 03_QZH）
+   - yaml 75 行 car.type：大集合文件夹名（如 BYD_UKE）
+   探索不到 → 咨询用户
 4. 应用/确认仿真临时改动（visualization_node.cpp + paraDefine.h；确认为临时，可回退，用户知情）
-5. catkin_make 编译
-6. bash start 启动工具
+5. **编译前咨询仿真模式**：paraDefine.h 的 HILMODE（17行）——若配为 2 则为 SGU 仿真模式；编译前必须问用户用哪个模式/值，不猜
+6. catkin_make 编译
+7. bash start 启动工具
 ```
 
 ## 盘点数据源

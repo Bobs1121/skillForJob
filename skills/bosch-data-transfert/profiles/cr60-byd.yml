@@ -40,12 +40,22 @@ code_repo:
   tag_prefix: "BYD_UKE_"
   tag_suffix_strip: "_S"
 
-# 车型 -> yaml sheet（54 行 xlsx_sheet）
+# 车型配置（两级：大集合文件夹 → 具体车型 sheet）
+# 大集合 = coem/ 下文件夹名（如 BYD_UKE），也对应 yaml 75 行 car.type
+# 具体车型 = 大集合内的 sheet（如 03_QZH），对应 yaml 54 行 xlsx_sheet
 models:
-  BYD_UKE: "03_QZH"
-  BYD_SC6H: "03_QZH"
+  BYD_UKE:
+    car_type: "BYD_UKE"        # 大集合文件夹名（yaml 75 行 car.type）
+    sheets: ["03_QZH", "00_SC2E", "01_SA3", "02_PA", "04_EWE", "05_MR"]  # 具体车型候选
+    default_sheet: "03_QZH"
+  BYD_SC6H:
+    car_type: "BYD_SC6H"
+    sheets: ["03_QZH", "00_SC2E", "01_SA3", "02_PA", "04_EWE", "05_MR"]
+    default_sheet: "03_QZH"
 
 # 仿真临时补丁（默认启用，AI 按需确认/应用）
 sim_patch:
   visualization_node: "taskTime 双传（GUI 仿真适配）"
-  paraDefine: "BUILDMODEL=2（ROS GUI mode）"
+  paraDefine:
+    BUILDMODEL: "2（ROS GUI mode；0=baseband, 1=baseband VS, 2=ROS GUI）"
+    HILMODE: "编译前咨询：2=SGU 仿真模式，其他值待用户确认"

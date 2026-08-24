@@ -42,9 +42,16 @@ code_repo:
   tag_prefix: "<版本->tag前缀，如 BYD_UKE_>"
   tag_suffix_strip: "<去尾缀，如 _S>"
 
-# 车型 -> yaml sheet（54 行 xlsx_sheet）；不匹配时 AI 应咨询
+# 车型配置（两级：大集合文件夹 → 具体车型 sheet）
+# 大集合 = coem/ 下文件夹名（如 BYD_UKE），也对应 yaml 75 行 car.type
+# 具体车型 = 大集合内的 sheet（如 03_QZH），对应 yaml 54 行 xlsx_sheet
+# 不匹配/不确定时 AI 应咨询用户
 models:
-  "<车型目录名>": "<sheet 名>"
+  "<大集合文件夹名>":       # 如 BYD_UKE
+    car_type: "<同大集合名>"       # yaml 75 行 car.type
+    sheets: ["<sheet1>", "<sheet2>"]   # 该大集合下的具体车型 sheet 候选
+    default_sheet: "<默认 sheet>"
 
 # 仿真临时补丁（可选；描述你的项目是否有 GUI 适配补丁）
 sim_patch: {}
+# 注：paraDefine.h 的 HILMODE（17行）若配为 2 则为 SGU 仿真模式；编译前须咨询用户确认。
