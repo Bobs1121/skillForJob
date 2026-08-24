@@ -1,0 +1,51 @@
+# CR60 / BYD 项目 profile（默认示例，供 AI 与同事参考）
+# 每项目一份；新项目复制 _template.yml 填自己的值。
+
+project: cr60_byd
+
+server:
+  host: "10.190.171.44"        # 用户指定为准
+  user: "hoz2wx"
+  ssh_key: "~/.ssh/id_ed25519"
+  workspace_root: "~/CR60LIGHT"
+
+data:
+  # 数据源类型：xlsx（飞书表格）或 list（文本清单）或 mixed（用户会给任意）
+  # 不确定时，AI 应向用户咨询，不猜。
+  src_type: "xlsx"             # xlsx | list | mixed
+  # xlsx 列（A 方案）
+  col_tr: "B"
+  col_data: "J"
+  col_version: "G"
+  # UNC 挂载前缀
+  src_prefix: "/mnt/cluster"
+  # 落盘根目录；含 <车型> 占位
+  data_base: "~/CR60LIGHT/data/qzh"
+  extensions: [".bag", ".blf"]
+
+arbe:
+  workspace: "~/CR60LIGHT/cr60_light_arbe"
+  algo_sub: "src/algo_source"
+  git_remote: "ssh://git@sourcecode01.de.bosch.com:7999/cr60_evo/cr60_light.git"
+  config_sub: "src/arbe_phoenix_radar_driver-master/arbe_gui/Config"
+  yaml_name: "launch_config_4radars.yaml"
+  cuda_sub: "tools/container_input/08_CustData"
+  cuda_glob: "CUDA_*.xlsx"
+  ros_setup: "/opt/ros/noetic/setup.bash"
+
+code_repo:
+  api_base: "https://sourcecode06.dev.bosch.com/rest/api/1.0/"
+  project: "CR60_EVO"
+  repo: "cr60_light"
+  tag_prefix: "BYD_UKE_"
+  tag_suffix_strip: "_S"
+
+# 车型 -> yaml sheet（54 行 xlsx_sheet）
+models:
+  BYD_UKE: "03_QZH"
+  BYD_SC6H: "03_QZH"
+
+# 仿真临时补丁（默认启用，AI 按需确认/应用）
+sim_patch:
+  visualization_node: "taskTime 双传（GUI 仿真适配）"
+  paraDefine: "BUILDMODEL=2（ROS GUI mode）"

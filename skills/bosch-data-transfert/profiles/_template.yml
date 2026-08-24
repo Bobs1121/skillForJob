@@ -1,0 +1,50 @@
+# =============================================================
+# 通用数据 + arbe 一键 配置模板
+# 复制本文件为 <你的项目>.yml，把尖括号 <...> 的值替换成你自己的。
+# 每字段都可留空 -> 由 AI 向用户/环境确认；不确定千万别猜。
+# =============================================================
+
+project: "<项目名，如 cr60_byd>"
+
+server:                        # 分析服务器（不唯一，用户指定）
+  host: "<IP 或主机名>"
+  user: "<SSH 用户>"
+  ssh_key: "~/.ssh/<你的密钥>"
+  workspace_root: "<工作区根，如 ~/CR60LIGHT>"
+
+data:
+  # 数据源类型：xlsx(Excel表格) | list(文本清单) | mixed(用户给任意) | 空(由AI咨询)
+  src_type: ""
+  # xlsx 列号（若用 Excel）：默认 B/J/G，按你表格改
+  col_tr: "B"
+  col_data: "J"
+  col_version: "G"
+  # UNC 挂载前缀：数据源共享挂载到服务器的路径
+  src_prefix: "/mnt/cluster"
+  # 落盘根目录（建 <车型>/<TR号> 子目录）
+  data_base: "<如 ~/DATA/qzh>"
+  extensions: [".bag"]
+
+arbe:
+  workspace: "<arbe 工作区绝对路径>"
+  algo_sub: "src/algo_source"            # 内仓 submodule 相对路径
+  git_remote: "<git remote，如 ssh://git@.../cr60_light.git>"
+  config_sub: "<外仓 Config 相对路径>"
+  yaml_name: "<yaml 文件名，如 launch_config_4radars.yaml>"
+  cuda_sub: "<车型下 08_CustData 相对路径>"
+  cuda_glob: "CUDA_*.xlsx"
+  ros_setup: "/opt/ros/<distro>/setup.bash"
+
+code_repo:
+  api_base: "<Bitbucket API base>"
+  project: "<代码仓项目>"
+  repo: "<仓库名>"
+  tag_prefix: "<版本->tag前缀，如 BYD_UKE_>"
+  tag_suffix_strip: "<去尾缀，如 _S>"
+
+# 车型 -> yaml sheet（54 行 xlsx_sheet）；不匹配时 AI 应咨询
+models:
+  "<车型目录名>": "<sheet 名>"
+
+# 仿真临时补丁（可选；描述你的项目是否有 GUI 适配补丁）
+sim_patch: {}

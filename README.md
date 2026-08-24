@@ -38,6 +38,7 @@ cp -r /path/to/claude-code-skills/skills/code-review .claude/skills/code-review
 | Skill | 命令 | 描述 |
 |-------|------|------|
 | code-review | `/review` | 自适应三层结构化代码审查 |
+| bosch-data-transfert | 数据/arbe 一键 | 数据准备 + arbe 切分支/编译/启动 一体化 |
 | requirement-code-traceability | `$requirement-code-traceability` | 需求问答、代码一致性检查与实施方案 |
 
 ## Solutions
