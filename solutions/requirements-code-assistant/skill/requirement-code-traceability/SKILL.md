@@ -41,12 +41,15 @@ Read [planning-checklist.md](references/planning-checklist.md) for required plan
 
 ## Extend the requirement library
 
-1. Copy the atomic requirement template from the solution package.
-2. Split compound prose into independently testable statements.
-3. Preserve source document key, version, section, and PDF page.
-4. Put normalized machine fields in one `requirement-json` block.
-5. Set new mappings to `unknown` or `candidate`; never pre-mark them `matched`.
-6. Run the requirements validator before accepting the note.
+1. Infer ordinary material usage from filename, type, directory, and a bounded preview.
+2. Prefer the newest explicit version; retain older versions only for provenance.
+3. Ask one compact user question only for ambiguous authority, applicability, or version conflicts.
+4. Bind every draft to one queue task and the current source SHA-256 fingerprint.
+5. Split compound prose into independently testable statements.
+6. Preserve source document key, version, section, locator, and task ID.
+7. Put normalized machine fields in one `requirement-json` block.
+8. Set new mappings to `unknown` or `candidate`; never pre-mark them `matched`.
+9. Run provenance and schema validation before accepting the note.
 
 Read [atomic-schema.md](references/atomic-schema.md) for the schema.
 
@@ -57,4 +60,3 @@ Read [atomic-schema.md](references/atomic-schema.md) for the schema.
 - Cite repository-relative file paths and line numbers.
 - Do not expose confidential source text through a public skill package.
 - Do not mark a requirement complete without implementation and verification evidence.
-
