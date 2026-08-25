@@ -22,7 +22,7 @@ skills/
     ├── VERSION                     # Skill 版本
     ├── agents/                     # Agent 展示和触发信息
     ├── references/                 # YAML/MCP 合同和配置规则
-    └── scripts/                    # 只读环境发现脚本
+    └── scripts/                    # 环境发现、首启引导和静默启动脚本
 
 solutions/
 └── requirements-code-assistant/    # 原子需求 Vault + Requirements MCP + Agent Skill
@@ -56,12 +56,14 @@ Bobs1121/skillForJob/skills/radar-sim-simulation
 在任意 Agent 对话框中输入：
 
 ```text
-使用 radar-sim-simulation Skill，基于当前代码仓配置并运行 Selena 仿真；不确定的业务输入先问我，确认后再提交。
+使用 radar-sim-simulation Skill，仿真当前需要验证的数据。
 ```
 
-Skill 会根据当前代码仓发现 Git、嵌套 Selena 子仓、编译脚本、Runtime、Selena 产物和 MF4 候选，生成 `UserRunConfig 2.0` YAML，并自动处理 MCP/SDK/Connector 检查、任务提交、进度、诊断、Manifest 和结果下载。
+Skill 会根据当前代码仓发现 Git、嵌套 Selena 子仓、编译脚本、Runtime、Selena 产物和 MF4 候选，生成 `UserRunConfig 2.0` YAML。首次存在业务歧义时合并询问一次；配置确认后，MCP/SDK/Connector 检查、active profile 恢复、任务提交、进度、重试、诊断、Manifest 和结果下载全部静默自动处理。
 
 用户不需要下载 radar-sim 源码或填写内部 Agent、Stage、Transfer、Runtime Bundle 和 Cluster 参数。
+
+Skill 会在本机 active profile 中记住上次的代码仓、Selena 配置、数据路径和 Job 状态。因此“帮我再仿一下刚刚的数据”会直接恢复上次配置，不要求用户再次指出数据路径。
 
 ### 3. 使用其他 Skill
 
@@ -74,7 +76,7 @@ Skill 会根据当前代码仓发现 Git、嵌套 Selena 子仓、编译脚本�
 | code-review | `/review` | 自适应三层结构化代码审查 |
 | bosch-data-transfert | 数据/arbe 一键 | 数据准备 + arbe 切分支/编译/启动一体化 |
 | requirement-code-traceability | `$requirement-code-traceability` | 需求问答、代码一致性检查与实施方案 |
-| radar-sim-simulation | `$radar-sim-simulation` | 基于当前代码环境配置、提交和跟踪 Selena 仿真 |
+| radar-sim-simulation | `$radar-sim-simulation` | 基于当前代码环境静默配置、提交和跟踪 Selena 仿真 |
 
 ## Solutions
 
