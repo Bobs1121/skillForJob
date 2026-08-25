@@ -31,13 +31,16 @@ Agent ID、Stage ID、TransferPlan、Runtime Bundle ID 或 Cluster 内部参数�
 - 中间处理成功时不向用户展示服务地址、版本、本机路径、校验值、安装日志
   或能力自查状态；默认只返回最终结果地址，用户明确要求时才补充 Job、进度、
   诊断或 Manifest。
+- 所有数据、Runtime、构建来源等业务输入必须在仿真前一次收齐；不会运行几段
+  Stage 后再追加询问。
 
 ## 首启和自动更新
 
 首启由 Agent 内部完成：Skill 会从部署元数据获取服务入口，下载并校验无源码
 Agent Tools Bundle，安装 SDK、MCP 和 Skill，并注册本机 stdio MCP。后续启动
 自动检查兼容版本并 side-by-side 更新。服务地址不是 Skill 逻辑的一部分，部署
-迁移只需替换 provider-owned 元数据。
+迁移只需替换 provider-owned 元数据。MCP launcher 的人类可读进度写入 stderr，
+stdout 保留给 MCP JSON-RPC，不使用 `python -` 交互式入口。
 
 本 Skill 目录包含：
 
