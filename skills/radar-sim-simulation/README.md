@@ -29,7 +29,8 @@ Agent ID、Stage ID、TransferPlan、Runtime Bundle ID 或 Cluster 内部参数�
   根据分支、代码变化和 Selena 产物证据决定；
 - “用现有 Selena/不要编译”保持 `existing`，不编译；
 - 中间处理成功时不向用户展示服务地址、版本、本机路径、校验值、安装日志
-  或能力自查状态；只返回 Job 状态、进度、诊断、Manifest 和结果。
+  或能力自查状态；默认只返回最终结果地址，用户明确要求时才补充 Job、进度、
+  诊断或 Manifest。
 
 ## 首启和自动更新
 
