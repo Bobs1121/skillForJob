@@ -1,0 +1,7 @@
+{
+  "schema_version": "radar-sim.skill-service/1.0",
+  "service_url": "http://10.190.171.44:8877",
+  "service_urls": ["http://10.190.171.44:8877"],
+  "mcp_name": "radar-sim",
+  "auto_bootstrap": true
+}
