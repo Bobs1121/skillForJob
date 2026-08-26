@@ -1,0 +1,7 @@
+interface:
+  display_name: "CR60 批量数据预检查"
+  short_description: "批量解析 rosbag 并生成独立 HTML 报告"
+  default_prompt: "Use $cr60-debug-harness-batch to consume the upstream handoff and generate per-data CR60 HTML reports."
+
+policy:
+  allow_implicit_invocation: true

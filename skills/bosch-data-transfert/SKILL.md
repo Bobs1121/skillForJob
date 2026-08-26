@@ -7,6 +7,8 @@ description: >
   配置车型 CUDA、应用仿真改动、catkin_make 编译并 bash start 启动 arbe 工具时使用。
   服务器地址不固定、由用户指定。本 skill 是"数据准备 + arbe 切分支/编译/启动"的统一入口
   （由 cr60light-data-prep 和 cr60light-arbe-build 两个 skill 合并调度）。
+  数据和代码环境准备完成后，可把版本化的 `cr60-analysis-intake.v1` handoff 交给同级
+  `cr60-debug-harness-batch` skill 做 Sprint1 数据预检查和 HTML 报告。
   触发词：数据准备、拷贝数据到Linux、问题单、cr60light、arbe、切分支、编译、catkin_make、启动工具。
 ---
 
@@ -26,6 +28,8 @@ description: >
   → 6. 从数据源拷数据到对应 TR 目录
   → 7. 校验文件大小一致性
   → 8. 对照 G 列版本，定位代码仓 tag（供下一步切分支用）
+  → 9. 输出 `cr60-analysis-intake.v1`（数据路径 + 代码身份 + 车型/COEM + 构建状态）
+  → 10. 用户确认后交给 `cr60-debug-harness-batch` 做批量预检查
 ```
 
 ## 输入校验（重要，先做）
@@ -158,6 +162,37 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 - 拷完检查大小 `stat -c%s` 与源比对。
 - 脚本内置：跳过、重试、大小校验、失败统计。
 - SMB 拷贝"看似卡住"，用进程轮询确认进程在跑，**不要重复启动同一文件的拷贝**（I/O 竞争）。
+
+## 8. 下游 handoff：交给批量数据预检查
+
+数据准备、版本确认和 arbe 构建状态确认后，生成一个 `cr60-analysis-intake.v1` JSON 文件，作为本 skill 与同级 `cr60-debug-harness-batch` 的唯一交互边界。推荐保存为：
+
+```text
+<handoff-dir>/cr60-analysis-intake.v1.json
+```
+
+handoff 至少要包含：
+
+- `environment.server`：host、user、port；
+- `environment.arbe`：workspace、outer/algo commit、branch 或 detached 状态、dirty 状态、`algo_submodule`；
+- `environment.vehicle`：COEM 大集合、车型、CUDA sheet；
+- `environment.build`：`catkin_make`、可执行文件和 `bash start` 状态；
+- `data.root` 和 `data.cases[]`：`case_id`、TR 号、数据目录、每个 bag 的远程绝对路径、格式、大小和可选 sha256；
+- `data.cases[].source_selector`：该数据绑定的 outer/algo commit 或 branch；
+- `downstream`：可选的 harness profile、analysis context、输出目录和媒体策略；
+- `checks`、`status`、`notes`：缺失数据、版本不匹配、拷贝失败和构建失败必须显式记录。
+
+禁止把 SSH 密钥、密码、Bearer token 或其他凭据写入 handoff。远程 bag 路径可以写入，因为下游需要通过同一 profile 读取它。
+
+交接规则：
+
+1. `status=blocked` 时不启动下游分析；先补齐数据、版本或配置。
+2. `status=partial` 只有在用户明确接受部分数据时，才由下游以 `--allow-partial` 消费；ready、blocked、unsupported 必须分别统计。
+3. 同一 handoff 内的 case 必须与同一代码版本/车型上下文匹配；混合版本拆成多个 handoff。
+4. 下游只读消费 handoff，不切分支、不修改 arbe、不重新解释上游路径；需要刷新源码时由下游另行生成 read-only analysis context。
+5. 下游完成后返回 `batch_summary.json`、批量 `index.html` 和每条数据的 `report.html` 路径，并保留 `handoff_id` 与 source identity。
+
+完整字段、状态和示例见 [`references/analysis_handoff.md`](references/analysis_handoff.md)。
 
 ## 脚本清单
 
