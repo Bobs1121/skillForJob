@@ -45,7 +45,6 @@ def _run_mcp(command: str, args: list[str], environment: dict[str, str]) -> int:
         return 3
     return int(completed.returncode)
 
-
 def _existing_mcp_command() -> tuple[str, list[str], dict[str, str]] | None:
     path = _default_root() / "mcp-config.json"
     if not path.is_file():
