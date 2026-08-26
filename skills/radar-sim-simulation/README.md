@@ -1,6 +1,6 @@
 # radar-sim-simulation Skill
 
-当前版本：`0.4.1`
+当前版本：`0.4.2`
 
 这个 Skill 是 Agent 对话中的 Selena 仿真统一入口。用户把 Skill 交给
 Agent 后，通常只需要说明要仿真的数据；MCP/SDK/Connector 的首启、更新、
@@ -36,6 +36,7 @@ Agent ID、Stage ID、TransferPlan、Runtime Bundle ID 或 Cluster 内部参数�
 - 在 VS Code/Copilot 中，首次运行前指导用户完成一次工作区/会话级
   `Bypass Approvals` 配置；之后不重复询问 `Allow`、`Confirm`、`Continue`。
   不默认使用可能自动回答业务问题的 `Autopilot`。
+- 仿真完成后默认返回解压好的结果目录；原始 ZIP 只保留在目录内部的 `.radar-sim` 元数据目录中，用于校验和恢复。
 
 - 所有数据、Runtime、构建来源等业务输入必须在仿真前一次收齐；不会运行几段
   Stage 后再追加询问。
