@@ -83,3 +83,78 @@ Skill 会基于当前代码仓和 active profile 自动补齐其余配置；只�
 动态解析。安装时生成的 profile、credentials 和 catalog 不属于公共 Skill。
 
 Skill 的 Python 脚本只使用标准库；SDK/MCP/Connector 由服务端无源码分发。
+
+## 与 Agent 对话：从安装到仿真
+
+以下示例适用于 Copilot、Claude Code 和其他支持 Skill/MCP 的 Agent。用户不需要下载 `radar-sim` 源码；Skill 负责触发服务端 Agent Tools 的下载、校验、安装和更新。
+
+### 首次安装和 MCP 初始化
+
+把 Skill 仓库交给 Agent，并发送：
+
+```text
+请安装并启用 radar-sim-simulation Skill：
+https://github.com/Bobs1121/skillForJob.git
+子目录：skills/radar-sim-simulation
+
+完成首次 MCP 初始化和握手。SDK、MCP、Connector 和更新都从服务提供方的
+Agent Tools 服务获取，不要下载 radar-sim 源码。所有常规准备自动完成；只在
+仿真业务输入确实不明确时，一次性合并询问，不要中间逐个询问 Allow、Confirm
+或 Continue。
+```
+
+Copilot 首次出现权限菜单时，将当前工作区/会话从 `Default Approvals` 切换到 `Bypass Approvals`。不建议开启全局 `chat.tools.global.autoApprove`；版本和配置差异见 `references/copilot-approvals.md`。
+
+首次初始化可能需要 Agent 重载一次 MCP 或重新加载窗口。完成后，不要每次仿真重复安装或注册 MCP。
+
+### 首次仿真
+
+最小输入：
+
+```text
+使用 radar-sim-simulation Skill，仿真这个数据：
+D:/measurements/example.MF4
+```
+
+目录输入：
+
+```text
+使用 radar-sim-simulation Skill，仿真这个目录：
+D:/measurements/example-batch
+```
+
+Skill 会从当前代码仓和已有 Agent profile 发现候选，并生成/校验 `UserRunConfig 2.0`。多个 MF4、Runtime、编译脚本或 Selena 产物无法区分时，Agent 会在任何 Connector、传输、编译和提交之前一次性列出合并问题。
+
+### 重复和修改后仿真
+
+```text
+用刚刚的数据再仿真一次。
+```
+
+```text
+我刚修改了当前代码，请用刚刚的数据重新仿真验证。
+```
+
+```text
+请使用已经配置好的 Selena 产物，不要编译，用这个数据仿真：
+D:/measurements/example.MF4
+```
+
+Skill 会恢复上次的 active profile。用户说“修改后重新仿真”时使用当前代码 `build`，由后端根据 Selena 分支、代码变化和已有产物证据决定跳过、增量或全量编译；用户不需要在 YAML 中填写这些内部编译模式。
+
+### 正常输出
+
+完成后只需关注本机解压结果目录：
+
+```text
+仿真完成
+结果地址：<verified local extracted result directory>
+```
+
+目录中直接有 MF4、日志和结果文件。原始 ZIP 只保留在目录内部 `.radar-sim` 中用于校验和恢复；MCP 默认返回 `format=directory`。若某个旧 SDK 集成仍需要 ZIP，可显式使用 `extract=false`。
+
+### 用户不需要处理的内容
+
+SDK/MCP/Connector 首启、更新、启动、版本检查、readiness、数据传输、Selena 编译、Job 轮询、可恢复重试、结果下载和解压都由 Skill/MCP/服务端自动完成。对话中不应出现逐步的 `Allow`、`Confirm`、`Continue`、Stage 或 Transfer 操作确认。
+
+只有以下情况才需要用户参与：数据或仿真语义无法判断、显式业务字段互相冲突、宿主强制安全策略拒绝必要操作，或用户主动要求取消/更换执行目标。
