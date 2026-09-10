@@ -7,8 +7,6 @@ description: >
   配置车型 CUDA、应用仿真改动、catkin_make 编译并 bash start 启动 arbe 工具时使用。
   服务器地址不固定、由用户指定。本 skill 是"数据准备 + arbe 切分支/编译/启动"的统一入口
   （由 cr60light-data-prep 和 cr60light-arbe-build 两个 skill 合并调度）。
-  数据和代码环境准备完成后，可把版本化的 `cr60-analysis-intake.v1` handoff 交给同级
-  `cr60-debug-harness-batch` skill 做 Sprint1 数据预检查和 HTML 报告。
   触发词：数据准备、拷贝数据到Linux、问题单、cr60light、arbe、切分支、编译、catkin_make、启动工具。
 ---
 
@@ -28,8 +26,6 @@ description: >
   → 6. 从数据源拷数据到对应 TR 目录
   → 7. 校验文件大小一致性
   → 8. 对照 G 列版本，定位代码仓 tag（供下一步切分支用）
-  → 9. 输出 `cr60-analysis-intake.v1`（数据路径 + 代码身份 + 车型/COEM + 构建状态）
-  → 10. 用户确认后交给 `cr60-debug-harness-batch` 做批量预检查
 ```
 
 ## 输入校验（重要，先做）
@@ -71,17 +67,19 @@ description: >
 
 ```
 1. 确定目标 tag：G 列版本 → 代码仓 tag；**AI 先由数据推断出候选 tag 并列出依据 → 必须经用户确认后才算定案**（无 tag 则问用户分支）
-2. 内仓 algo_source 切分支/tag
-3. 更新 CUDA 表 + 车型配置（两级：大集合文件夹 + 具体车型 sheet）：
-   AI 由数据推断出【大集合】与【具体车型】→ 列出推断及依据 → 用户确认后才改 yaml
-   - yaml 53 行 xlsx_path：内仓最新 CUDA 表文件名
-   - yaml 54 行 xlsx_sheet：具体车型 sheet（如 03_QZH）
-   - yaml 75 行 car.type：大集合文件夹名（如 BYD_UKE）
+2. 内仓 algo_source 切分支/tag（强制覆盖前：`git diff > 备份.patch` 存到 ~/CR60LIGHT/sim_patches/）
+3. 更新 CUDA 表 + 车型配置：
+   - **先切 tag 再找 CUDA 表**：`ls coem/<车型>/tools/container_input/08_CustData/`，用该 tag 下**实际存在**的最新 `CUDA_<项目>_V*.xlsx`（tag 内不一定有用户口中的最新版本，如 BL02V02.2 tag 只有 V2.1，但 V2.1 已含 02_SC6E sheet——**切 tag 后用 openpyxl 列 sheetnames 找车型 sheet，不要凭表版本下结论**）
+   - 拷 xlsx 到外仓 GUI Config：`cp ... ~/CR60LIGHT/cr60_light_arbe/src/arbe_phoenix_radar_driver-master/arbe_gui/Config/`
+   - 改 `arbe_gui/Config/launch_config_4radars.yaml`：
+     - 53 行 xlsx_path：拷入的表文件名
+     - 54 行 xlsx_sheet：车型对应 sheet（如 02_SC6E；用 sheetnames 实测确认）
+     - 75 行 car.type：与 tag 的 coem 车型目录一致（如 BYD_SC6H）
    探索不到 → 咨询用户
-4. 应用/确认仿真临时改动（visualization_node.cpp + paraDefine.h；确认为临时，可回退，用户知情）
-5. **编译前咨询仿真模式**：paraDefine.h 的 HILMODE（17行）——若配为 2 则为 SGU 仿真模式；编译前必须问用户用哪个模式/值，不猜
-6. catkin_make 编译
-7. bash start 启动工具
+4. 应用/确认仿真临时改动（paraDefine.h BUILDMODEL=2；ADAS_STATE_EXTERNAL_MODE 相关见 cr60light-arbe-build skill；应用前先备份 dirty diff）
+5. **编译前咨询仿真模式**：paraDefine.h 的 HILMODEL（17行）——0=普通（雷达点云仿真），2=SGU 仿真注入（受 PF_BUILD_FUNTEST_SGU_INJECTION 宏影响）；编译前必须问用户用哪个模式/值，不猜
+6. catkin_make 编译（**不要 `--pkg algo_source`**——algo_source 不是 catkin 包，直接全量 `catkin_make`）
+7. 启动：先停旧 ROS 会话再 roslaunch（见下"启动与会话"）
 ```
 
 ## 盘点数据源
@@ -90,12 +88,17 @@ description: >
 
 ### A. Excel 表格（推荐、可自动解析）
 
-- 用 `openpyxl.read_only` 读：B 列=TR号，J 列=数据路径，G 列=版本。
+- 用 `openpyxl` 读（文件有 200 个空行时 `read_only=True` 的 `max_row` 不可信，直接 `iter_rows` 逐行读）：B 列=TR号，J 列=数据路径，G 列=版本，E 列=车型。
+- **筛选范围以用户口径为准，先澄清再拷**：
+  - 用户说"只要 SC6E 的"可能指 **sheet 名**（SC6E sheet）而非 E 列车型 —— sheet 内会混排其他车型行（SC6E sheet 里就有 E 列=SC6H 的 CRGVI-1928）。**按 sheet 过滤，不要只按 E 列车型过滤**；拿不准时列出行清单让用户圈定。
+  - 用户补说"倒数第二个也要拷"之类，按 sheet 行序定位，拷前先 `ls` 源目录并 `stat -c%s` 校验。
 - 规则：
   - J 列是 UNC（`//…` 或 `\\…`）→ 本地路径映射到 `/mnt/cluster`（`SRC_PREFIX`）。
   - J 列是目录 → 拷贝该目录下所有 `*.bag`/`*.blf`。
   - J 列是单个文件路径（可能无扩展）→ 找到对应 `*.bag`/`*.blf` 拷贝。
-  - 跳过非路径文本（"TR 附件"、"需要去 ssec 找数据"）。
+  - 跳过非路径文本（"TR 附件"、"需要去 ssec 找数据"、"见TR"、tracker URL）：
+    - "TR 附件"/"见TR" → 走 TR 附件下载（见下），下载后 scp 上传到该 TR 目录。
+    - J 列是目录（无文件名）→ `ls` 源目录，拷目录下所有 `*.bag`/`*.blf`。
   - 幂等：已存在且同尺寸 → skip。拷贝失败重试。
 
 ### B. 非 Excel（用户直接给路径/清单）
@@ -106,7 +109,8 @@ description: >
 
 ## 2. 建目录
 
-在服务器 `~/data/<车型>/<TR号>/` 建目录，与 cr60light-data-prep 一致的风格（具体根目录按用户工作区）。
+在服务器 `~/CR60LIGHT/data/<车型小写>/<TR号>/` 建目录（如 `~/CR60LIGHT/data/qzh/CRGVI-1842/`、`~/CR60LIGHT/data/sc6e/CRGVI-1899/`；与 cr60light-data-prep 一致的风格，具体根目录按用户工作区）。
+每 TR 一个二级目录；一 TR 多行数据共用同一目录。
 
 ## 3. 服务器与权限（由用户指定）
 
@@ -131,6 +135,8 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 - J 列可能是目录（拷全 `*.bag`/`*.blf`）或单文件路径（可能缺后缀）。
 - **推荐用脚本** `scripts/data_transfert.py`（部署到服务器工作区），自动处理 UNC→本地映射、目录/文件解析、幂等跳过、重试、大小校验。
 - 大文件从 SMB 拷较慢（约 1GB/min），用 `nohup ... &` 后台跑，轮询进度。
+- **SSH 会话里跑长命令要防超时**：拷贝/编译一律 `nohup bash -c '...' > /tmp/xxx.log 2>&1 < /dev/null &`（`< /dev/null` 防 stdin 挂起），然后短命令轮询日志。
+- **`pkill -f` 会切断自己的 SSH 连接**（匹配到 sshd 会话链，exit 255）：停 ROS/arbe 进程时，把 pkill 写进远端脚本 `setsid nohup /tmp/stop_arbe.sh &` 执行，不要在交互 SSH 命令里直接 pkill。
 
 ### 兜底（Linux 直拷不可用时）
 
@@ -153,46 +159,16 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 
 - **代码仓**（常见）：`CR60_evo / cr60_light`（Bitbucket，`sourcecode06.dev.bosch.com`）。
 - **认证**：`-H "Authorization: Bearer $BOSCH_PR_KEY"`
-- **tag 常见**：`BYD_UKE_BL03RC02.7`、`BYD_UKE_BL04RC01.0/1/2` 等；tag 通常 `BYD_UKE_<版本>` 去 `_S` 尾缀。
+- **tag 常见**：`BYD_UKE_BL03RC02.7`、`BYD_UKE_BL04RC01.0/1/2`、`BYD_SC6H_BL02V02.2` 等；tag 通常 `<项目>_<版本>` 去 `_S` 尾缀。
 - **版本匹配**：G 列版本 → tag（非完全一致，模糊匹配）。
-- **Linux 直接 git**：`ssh://git@….de:7999/cr60_evo/cr60_light.git`（Linux 可直接连）。
+- **tag 前缀不止 BYD_UKE**：SC6H 车系用 `BYD_SC6H_` 前缀（如 BL02V02.2→`BYD_SC6H_BL02V02.2`）。**候选集要先 `git ls-remote --tags | grep <版本号>` 按版本号全局搜**，再按前缀分组列给用户确认——不要只试 BYD_UKE 前缀就下结论"查不到 tag"。
+- **Linux 直接 git**：`git ls-remote --tags ssh://git@sourcecode06.dev.bosch.com:7999/cr60_evo/cr60_light.git`（Windows 侧 Git Bash 可直连 22 端口）。
 
 ## 7. 校验与纠错
 
 - 拷完检查大小 `stat -c%s` 与源比对。
 - 脚本内置：跳过、重试、大小校验、失败统计。
 - SMB 拷贝"看似卡住"，用进程轮询确认进程在跑，**不要重复启动同一文件的拷贝**（I/O 竞争）。
-
-## 8. 下游 handoff：交给批量数据预检查
-
-数据准备、版本确认和 arbe 构建状态确认后，生成一个 `cr60-analysis-intake.v1` JSON 文件，作为本 skill 与同级 `cr60-debug-harness-batch` 的唯一交互边界。推荐保存为：
-
-```text
-<handoff-dir>/cr60-analysis-intake.v1.json
-```
-
-handoff 至少要包含：
-
-- `environment.server`：host、user、port；
-- `environment.arbe`：workspace、outer/algo commit、branch 或 detached 状态、dirty 状态、`algo_submodule`；
-- `environment.vehicle`：COEM 大集合、车型、CUDA sheet；
-- `environment.build`：`catkin_make`、可执行文件和 `bash start` 状态；
-- `data.root` 和 `data.cases[]`：`case_id`、TR 号、数据目录、每个 bag 的远程绝对路径、格式、大小和可选 sha256；
-- `data.cases[].source_selector`：该数据绑定的 outer/algo commit 或 branch；
-- `downstream`：可选的 harness profile、analysis context、输出目录和媒体策略；
-- `checks`、`status`、`notes`：缺失数据、版本不匹配、拷贝失败和构建失败必须显式记录。
-
-禁止把 SSH 密钥、密码、Bearer token 或其他凭据写入 handoff。远程 bag 路径可以写入，因为下游需要通过同一 profile 读取它。
-
-交接规则：
-
-1. `status=blocked` 时不启动下游分析；先补齐数据、版本或配置。
-2. `status=partial` 只有在用户明确接受部分数据时，才由下游以 `--allow-partial` 消费；ready、blocked、unsupported 必须分别统计。
-3. 同一 handoff 内的 case 必须与同一代码版本/车型上下文匹配；混合版本拆成多个 handoff。
-4. 下游只读消费 handoff，不切分支、不修改 arbe、不重新解释上游路径；需要刷新源码时由下游另行生成 read-only analysis context。
-5. 下游完成后返回 `batch_summary.json`、批量 `index.html` 和每条数据的 `report.html` 路径，并保留 `handoff_id` 与 source identity。
-
-完整字段、状态和示例见 [`references/analysis_handoff.md`](references/analysis_handoff.md)。
 
 ## 脚本清单
 
@@ -205,3 +181,26 @@ handoff 至少要包含：
 ## 详细参考
 
 - 环境/权限/地址速查：`references/environment.md`（含服务器、数据源、tag 规则）。
+
+## 启动与会话（重要）
+
+服务器常有**旧 ROS 会话残留**（前次分析的 roscore/roslaunch/多个 `arbe_visualization_engine`），直接启动会节点名冲突。启动前：
+
+```bash
+# 1. 查残留：pgrep -af 'roslaunch|rosmaster|arbe_visualization|arbe_gui'
+# 2. 停旧会话（不要在 SSH 命令里直接 pkill，会断自己连接）：
+cat > /tmp/stop_arbe.sh <<'EOF'
+#!/bin/bash
+pkill -f 'arbe.launch'; sleep 2
+pkill -f rosmaster; pkill -f arbe_visualization_engine; pkill -f arbe_gui
+exit 0
+EOF
+setsid nohup /tmp/stop_arbe.sh > /tmp/stop_arbe.log 2>&1 < /dev/null &
+# 3. 确认 11311 端口已释放：ss -tln | grep 11311
+# 4. 启动（DISPLAY 用旧会话的值，可从 /proc/<旧pid>/environ 查；VNC 常为 :10.0）：
+setsid nohup bash -c 'export DISPLAY=:10.0; source /opt/ros/noetic/setup.bash; source devel/setup.bash; roslaunch arbe_phoenix_radar_driver arbe.launch' > /tmp/arbe_start.log 2>&1 < /dev/null &
+# 5. 25s 后验证：pgrep -c -f arbe_visualization_engine（应为 4-5）+ tail 启动日志
+```
+
+- 编译后**必须重启会话**才加载新二进制（跑着的 roslaunch 用的还是旧产物）。
+- 启动日志常见非致命项：tf2 空 frame_id WARN；GUI 与 xcp publisher 的 md5sum 不匹配 ERROR（消息版本差异，不影响 bag 回放主链路）。

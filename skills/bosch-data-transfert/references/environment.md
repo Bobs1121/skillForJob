@@ -15,7 +15,7 @@
 | SSH | 免密密钥 `~/.ssh/id_ed25519`，SSH config 已配 |
 | 工作区根 | `~/CR60LIGHT/` |
 | 分析工作区 | `~/CR60LIGHT/cr60_light_arbe/`（ROS catkin） |
-| 数据目录 | `~/CR60LIGHT/data/qzh/<TR号>/` |
+| 数据目录 | `~/CR60LIGHT/data/<车型小写>/<TR号>/`（如 `data/qzh/CRGVI-1842/`、`data/sc6e/CRGVI-1899/`） |
 | 磁盘 | 935G 总量，约 360G 可用 |
 
 ## 数据源（UNC → 本地）
@@ -47,8 +47,8 @@
 | 浏览 URL | `https://sourcecode06.dev.bosch.com/projects/CR60_EVO/repos/cr60_light/browse` |
 | API base | `https://sourcecode06.dev.bosch.com/rest/api/1.0/` |
 | 认证 | `-H "Authorization: Bearer $BOSCH_PR_KEY"` |
-| tag 示例 | `BYD_UKE_BL03RC02.7`、`BYD_UKE_BL03RC02.8`、`BYD_UKE_BL04RC01.0/1/2` |
-| G列→tag | `BL03RC02.7_S`→`BYD_UKE_BL03RC02.7`；去 `_S`、加 `BYD_UKE_` |
+| tag 示例 | `BYD_UKE_BL03RC02.7`、`BYD_UKE_BL04RC01.0/1/2`、`BYD_SC6H_BL02V02.1/.2/.3/.4/.5` |
+| G列→tag | `BL03RC02.7_S`→`BYD_UKE_BL03RC02.7`；去 `_S`、加项目前缀（BYD_UKE_ / BYD_SC6H_，**按版本号 `git ls-remote --tags | grep <版本>` 全局搜再确认**） |
 | Linux git remote | `ssh://git@sourcecode01.de.bosch.com:7999/cr60_evo/cr60_light.git` |
 
 常用 API：
@@ -69,11 +69,14 @@ curl -sk -H "Authorization: Bearer $BOSCH_PR_KEY" \
 
 ## 车型 → sheet（CUDA yaml 54 行）
 
-| 车型目录 | yaml sheet |
+> sheet 名以**切 tag 后实际表**为准：`openpyxl.load_workbook(...).sheetnames` 实测，不要背映射表。
+
+| coem 车型目录 | 已实测 sheet |
 |---------|-----------|
-| BYD_UKE | 03_QZH |
-| BYD_SC6H | 03_QZH |
-| （其他） | 常见：00_SC2E/01_SA3/02_PA/03_QZH/04_EWE/05_MR |
+| BYD_UKE（Bundle 表） | 00_SC2E / 01_SA3 / 02_PA / 03_QZH / 04_EWE / 05_MR |
+| BYD_SC6H（V2.1 表） | 00_SC6H / 01_SHH / **02_SC6E** |
+
+注意：SC6E 车型的数据配 SC6H tag 时，用 BYD_SC6H 表的 `02_SC6E` sheet；SC6H tag 从 BL02V02.1 起才有，没有 .0。
 
 CUDA 表：内仓 `coem/<车型>/tools/container_input/08_CustData/CUDA_*.xlsx`
 
