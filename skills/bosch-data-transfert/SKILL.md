@@ -67,17 +67,19 @@ description: >
 
 ```
 1. 确定目标 tag：G 列版本 → 代码仓 tag；**AI 先由数据推断出候选 tag 并列出依据 → 必须经用户确认后才算定案**（无 tag 则问用户分支）
-2. 内仓 algo_source 切分支/tag
-3. 更新 CUDA 表 + 车型配置（两级：大集合文件夹 + 具体车型 sheet）：
-   AI 由数据推断出【大集合】与【具体车型】→ 列出推断及依据 → 用户确认后才改 yaml
-   - yaml 53 行 xlsx_path：内仓最新 CUDA 表文件名
-   - yaml 54 行 xlsx_sheet：具体车型 sheet（如 03_QZH）
-   - yaml 75 行 car.type：大集合文件夹名（如 BYD_UKE）
+2. 内仓 algo_source 切分支/tag（强制覆盖前：`git diff > 备份.patch` 存到 ~/CR60LIGHT/sim_patches/）
+3. 更新 CUDA 表 + 车型配置：
+   - **先切 tag 再找 CUDA 表**：`ls coem/<车型>/tools/container_input/08_CustData/`，用该 tag 下**实际存在**的最新 `CUDA_<项目>_V*.xlsx`（tag 内不一定有用户口中的最新版本，如 BL02V02.2 tag 只有 V2.1，但 V2.1 已含 02_SC6E sheet——**切 tag 后用 openpyxl 列 sheetnames 找车型 sheet，不要凭表版本下结论**）
+   - 拷 xlsx 到外仓 GUI Config：`cp ... ~/CR60LIGHT/cr60_light_arbe/src/arbe_phoenix_radar_driver-master/arbe_gui/Config/`
+   - 改 `arbe_gui/Config/launch_config_4radars.yaml`：
+     - 53 行 xlsx_path：拷入的表文件名
+     - 54 行 xlsx_sheet：车型对应 sheet（如 02_SC6E；用 sheetnames 实测确认）
+     - 75 行 car.type：与 tag 的 coem 车型目录一致（如 BYD_SC6H）
    探索不到 → 咨询用户
-4. 应用/确认仿真临时改动（visualization_node.cpp + paraDefine.h；确认为临时，可回退，用户知情）
-5. **编译前咨询仿真模式**：paraDefine.h 的 HILMODE（17行）——若配为 2 则为 SGU 仿真模式；编译前必须问用户用哪个模式/值，不猜
-6. catkin_make 编译
-7. bash start 启动工具
+4. 应用/确认仿真临时改动（paraDefine.h BUILDMODEL=2；ADAS_STATE_EXTERNAL_MODE 相关见 cr60light-arbe-build skill；应用前先备份 dirty diff）
+5. **编译前咨询仿真模式**：paraDefine.h 的 HILMODEL（17行）——0=普通（雷达点云仿真），2=SGU 仿真注入（受 PF_BUILD_FUNTEST_SGU_INJECTION 宏影响）；编译前必须问用户用哪个模式/值，不猜
+6. catkin_make 编译（**不要 `--pkg algo_source`**——algo_source 不是 catkin 包，直接全量 `catkin_make`）
+7. 启动：先停旧 ROS 会话再 roslaunch（见下"启动与会话"）
 ```
 
 ## 盘点数据源
@@ -86,12 +88,17 @@ description: >
 
 ### A. Excel 表格（推荐、可自动解析）
 
-- 用 `openpyxl.read_only` 读：B 列=TR号，J 列=数据路径，G 列=版本。
+- 用 `openpyxl` 读（文件有 200 个空行时 `read_only=True` 的 `max_row` 不可信，直接 `iter_rows` 逐行读）：B 列=TR号，J 列=数据路径，G 列=版本，E 列=车型。
+- **筛选范围以用户口径为准，先澄清再拷**：
+  - 用户说"只要 SC6E 的"可能指 **sheet 名**（SC6E sheet）而非 E 列车型 —— sheet 内会混排其他车型行（SC6E sheet 里就有 E 列=SC6H 的 CRGVI-1928）。**按 sheet 过滤，不要只按 E 列车型过滤**；拿不准时列出行清单让用户圈定。
+  - 用户补说"倒数第二个也要拷"之类，按 sheet 行序定位，拷前先 `ls` 源目录并 `stat -c%s` 校验。
 - 规则：
   - J 列是 UNC（`//…` 或 `\\…`）→ 本地路径映射到 `/mnt/cluster`（`SRC_PREFIX`）。
   - J 列是目录 → 拷贝该目录下所有 `*.bag`/`*.blf`。
   - J 列是单个文件路径（可能无扩展）→ 找到对应 `*.bag`/`*.blf` 拷贝。
-  - 跳过非路径文本（"TR 附件"、"需要去 ssec 找数据"）。
+  - 跳过非路径文本（"TR 附件"、"需要去 ssec 找数据"、"见TR"、tracker URL）：
+    - "TR 附件"/"见TR" → 走 TR 附件下载（见下），下载后 scp 上传到该 TR 目录。
+    - J 列是目录（无文件名）→ `ls` 源目录，拷目录下所有 `*.bag`/`*.blf`。
   - 幂等：已存在且同尺寸 → skip。拷贝失败重试。
 
 ### B. 非 Excel（用户直接给路径/清单）
@@ -102,7 +109,8 @@ description: >
 
 ## 2. 建目录
 
-在服务器 `~/data/<车型>/<TR号>/` 建目录，与 cr60light-data-prep 一致的风格（具体根目录按用户工作区）。
+在服务器 `~/CR60LIGHT/data/<车型小写>/<TR号>/` 建目录（如 `~/CR60LIGHT/data/qzh/CRGVI-1842/`、`~/CR60LIGHT/data/sc6e/CRGVI-1899/`；与 cr60light-data-prep 一致的风格，具体根目录按用户工作区）。
+每 TR 一个二级目录；一 TR 多行数据共用同一目录。
 
 ## 3. 服务器与权限（由用户指定）
 
@@ -127,6 +135,8 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 - J 列可能是目录（拷全 `*.bag`/`*.blf`）或单文件路径（可能缺后缀）。
 - **推荐用脚本** `scripts/data_transfert.py`（部署到服务器工作区），自动处理 UNC→本地映射、目录/文件解析、幂等跳过、重试、大小校验。
 - 大文件从 SMB 拷较慢（约 1GB/min），用 `nohup ... &` 后台跑，轮询进度。
+- **SSH 会话里跑长命令要防超时**：拷贝/编译一律 `nohup bash -c '...' > /tmp/xxx.log 2>&1 < /dev/null &`（`< /dev/null` 防 stdin 挂起），然后短命令轮询日志。
+- **`pkill -f` 会切断自己的 SSH 连接**（匹配到 sshd 会话链，exit 255）：停 ROS/arbe 进程时，把 pkill 写进远端脚本 `setsid nohup /tmp/stop_arbe.sh &` 执行，不要在交互 SSH 命令里直接 pkill。
 
 ### 兜底（Linux 直拷不可用时）
 
@@ -149,9 +159,10 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 
 - **代码仓**（常见）：`CR60_evo / cr60_light`（Bitbucket，`sourcecode06.dev.bosch.com`）。
 - **认证**：`-H "Authorization: Bearer $BOSCH_PR_KEY"`
-- **tag 常见**：`BYD_UKE_BL03RC02.7`、`BYD_UKE_BL04RC01.0/1/2` 等；tag 通常 `BYD_UKE_<版本>` 去 `_S` 尾缀。
+- **tag 常见**：`BYD_UKE_BL03RC02.7`、`BYD_UKE_BL04RC01.0/1/2`、`BYD_SC6H_BL02V02.2` 等；tag 通常 `<项目>_<版本>` 去 `_S` 尾缀。
 - **版本匹配**：G 列版本 → tag（非完全一致，模糊匹配）。
-- **Linux 直接 git**：`ssh://git@….de:7999/cr60_evo/cr60_light.git`（Linux 可直接连）。
+- **tag 前缀不止 BYD_UKE**：SC6H 车系用 `BYD_SC6H_` 前缀（如 BL02V02.2→`BYD_SC6H_BL02V02.2`）。**候选集要先 `git ls-remote --tags | grep <版本号>` 按版本号全局搜**，再按前缀分组列给用户确认——不要只试 BYD_UKE 前缀就下结论"查不到 tag"。
+- **Linux 直接 git**：`git ls-remote --tags ssh://git@sourcecode06.dev.bosch.com:7999/cr60_evo/cr60_light.git`（Windows 侧 Git Bash 可直连 22 端口）。
 
 ## 7. 校验与纠错
 
@@ -170,3 +181,26 @@ cp "$SRC/<子目录>/<file>.bag" "$DEST/<TR号>/"
 ## 详细参考
 
 - 环境/权限/地址速查：`references/environment.md`（含服务器、数据源、tag 规则）。
+
+## 启动与会话（重要）
+
+服务器常有**旧 ROS 会话残留**（前次分析的 roscore/roslaunch/多个 `arbe_visualization_engine`），直接启动会节点名冲突。启动前：
+
+```bash
+# 1. 查残留：pgrep -af 'roslaunch|rosmaster|arbe_visualization|arbe_gui'
+# 2. 停旧会话（不要在 SSH 命令里直接 pkill，会断自己连接）：
+cat > /tmp/stop_arbe.sh <<'EOF'
+#!/bin/bash
+pkill -f 'arbe.launch'; sleep 2
+pkill -f rosmaster; pkill -f arbe_visualization_engine; pkill -f arbe_gui
+exit 0
+EOF
+setsid nohup /tmp/stop_arbe.sh > /tmp/stop_arbe.log 2>&1 < /dev/null &
+# 3. 确认 11311 端口已释放：ss -tln | grep 11311
+# 4. 启动（DISPLAY 用旧会话的值，可从 /proc/<旧pid>/environ 查；VNC 常为 :10.0）：
+setsid nohup bash -c 'export DISPLAY=:10.0; source /opt/ros/noetic/setup.bash; source devel/setup.bash; roslaunch arbe_phoenix_radar_driver arbe.launch' > /tmp/arbe_start.log 2>&1 < /dev/null &
+# 5. 25s 后验证：pgrep -c -f arbe_visualization_engine（应为 4-5）+ tail 启动日志
+```
+
+- 编译后**必须重启会话**才加载新二进制（跑着的 roslaunch 用的还是旧产物）。
+- 启动日志常见非致命项：tf2 空 frame_id WARN；GUI 与 xcp publisher 的 md5sum 不匹配 ERROR（消息版本差异，不影响 bag 回放主链路）。

@@ -13,11 +13,17 @@ skills/bosch-data-transfert/
 │   ├── _template.yml        # 新同事复制改名即可
 │   └── cr60-byd.yml     # CR60/BYD 默认值
 ├── references/
-│   └── environment.md      # 环境/权限/地址速查
+│   ├── environment.md      # 环境/权限/地址速查
+│   └── analysis_handoff.md  # 交给下游数据预检查的 intake 契约
 └── scripts/
     ├── data_transfert.py      # 数据同步（通用化核心）
     └── setup_arbe.sh             # arbe 一键（切tag→拷CUDA→改yaml→验证仿真→编译）
 ```
+
+数据和代码环境准备完成后，上游输出 `cr60-analysis-intake.v1.json`，交给同级目录的
+`skills/cr60-debug-harness-batch`。下游只读消费该 handoff，批量解析 rosbag、生成
+`diagnosis_bundle.v1`、`runtime-schema.v1`、每条数据的 HTML 和批量入口；两个 skill 不共享
+未声明的临时变量或默认路径。
 
 ## 工作流程
 

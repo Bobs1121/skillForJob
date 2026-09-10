@@ -36,22 +36,25 @@
 
 ```
 53  xlsx_path: "CUDA_<车型>_<版本>.xlsx"   # CUDA 表（拷贝到 Config 的最新文件）
-54  xlsx_sheet: "03_QZH"                   # 车型 sheet
-75  type: BYD_UKE                          # 车型 type
+54  xlsx_sheet: "03_QZH"                   # 车型 sheet（openpyxl sheetnames 实测确认）
+75  type: BYD_UKE                          # 车型 type（= coem 目录名，catkin 用它解析 COEM_NAME）
 ```
 
-- CUDA xlsx 内 sheet 命名：`dataType, Readme, VersionInfo, 00_SC2E, 01_SA3, 02_PA, 03_QZH, 04_EWE, 05_MR`
-- QZH 车型 → `03_QZH`
+- CUDA xlsx sheet 命名随表而变，**以实测为准**：
+  - UKE Bundle 表：`dataType, Readme, VersionInfo, 00_SC2E, 01_SA3, 02_PA, 03_QZH, 04_EWE, 05_MR`，QZH → `03_QZH`
+  - SC6H V2.1 表：`dataType, Readme, VersionInfo, 00_SC6H, 01_SHH, 02_SC6E`；SC6E 数据配 SC6H tag → `02_SC6E`
 
-## 版本 tag（BYD UKE 系列）
+## 版本 tag（BYD UKE / SC6H 系列）
 
 | 表格 G 列 | 代码仓 tag |
 |-----------|-----------|
 | BL03RC02.7_S | BYD_UKE_BL03RC02.7 |
 | BL03RC02.8_S | BYD_UKE_BL03RC02.8 |
 | BL04RC01.2 | BYD_UKE_BL04RC01.2 |
+| BL02V02.2（SC6H 车系） | BYD_SC6H_BL02V02.2 |
 
-- 匹配规则：去 `_S` 尾缀，加 `BYD_UKE_` 前缀。
+- 匹配规则：去 `_S` 尾缀，加项目前缀（`BYD_UKE_` / `BYD_SC6H_`）。**先 `git ls-remote --tags | grep <版本号>` 全局搜候选再确认，不要只试一个前缀**。
+- SC6H 系列从 BL02V02.1 起有 tag，无 .0。
 - 内仓本地 tag 488 个，但新 tag 需 `git fetch origin --tags` 才可见。
 - 外仓 `develop_LGU_Simulation` 记录的 submodule 指针可能指向其他车型 tag（如 SC6H），内仓手动切 tag 后不一致是正常预期。
 
@@ -60,15 +63,16 @@
 | 文件 | 改动 |
 |------|------|
 | 外仓 `arbe_gui/src/arbe_visualization_engine/visualization_node.cpp` | `PostProcessMainTI(...)` 末尾 `..., &algo_objGMWInfo, taskTime, taskTime)`（多传 taskTime） |
-| 内仓 `algo_source/adas/symmetry/perception/include/paraDefine.h` | `#define BUILDMODEL 2`（原 0；2 = ROS GUI mode） |
+| 内仓 `algo_source/adas/symmetry/perception/include/paraDefine.h` | 10 行 `#define BUILDMODEL 2`（原 0；2 = ROS GUI mode）；17 行 `#define HILMODEL 0/2`（0=普通点云仿真回放，2=SGU 注入，编译前问用户） |
+| 内仓 `coem/<car.type>/components/AswPerception/func/adasFunc.c` | 可选调试改动：移除 `#if defined(ADAS_STATE_EXTERNAL_MODE)` 参数条件编译保护（恢复方法见 SKILL.md 4b） |
 
 ## 编译/启动
 
 ```bash
 cd ~/CR60LIGHT/cr60_light_arbe
 source /opt/ros/noetic/setup.bash
-catkin_make          # 编译（10-30min）
-bash start           # 启动（source devel/setup.bash + roslaunch arbe.launch）
+catkin_make          # 全量编译（2-15min；不要 --pkg algo_source，它不是 catkin 包）
+# 启动前先停旧 ROS 会话，再（DISPLAY=:10.0 VNC）roslaunch —— 详细步骤见 SKILL.md 第 6 节
 ```
 
 - ROS：Noetic。catkin_make 在 `/opt/ros/noetic/bin/catkin_make`。
