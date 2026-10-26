@@ -1,0 +1,47 @@
+{
+  "name": "byd_bsd",
+  "description": "BYD CR60 corner radar, Gen5 MF4 recordings: BSD/LCA warning + SIT relevantObjects + ego state",
+  "ego": {
+    "speed": {"name": "IPB_Vehicle_Speed_S", "gi": [35, 4], "scale": 0.2777778, "unit": "km/h -> m/s"},
+    "yaw": {"name": "Yaw_Rate_Signal_S", "gi": [36, 2], "scale": 1.0, "unit": "rad/s"},
+    "kappa": {
+      "regex": "m_environmentDataTipl_out_local.*_m_egoData\\._m_kapCurvTraj\\._m_value$",
+      "raw_scale": 3.814697265625e-06,
+      "note": "int16 NormalizedPerMetre0_125: kappa = raw * 0.125 / 32768 [1/m], positive = left (verify per project)"
+    }
+  },
+  "warnings": {
+    "left": {
+      "hmi": {
+        "signal": {"regex": "_m_opticHmi\\._m_bsdlcaWarnLValue$"},
+        "on": {"eq": [2]},
+        "note": "HMI level: 2 = warning shown; use --on-values 1,2 to include the pre-state"
+      },
+      "can": {
+        "signal": {"name": "RRL_LBSDAndLCAWrnng"},
+        "on": {"off_prefix": ["no", "off", "inactive", "none", "0"]}
+      }
+    },
+    "right": {
+      "hmi": {
+        "signal": {"regex": "_m_opticHmi\\._m_bsdlcaWarnRValue$"},
+        "on": {"eq": [2]}
+      },
+      "can": {
+        "signal": {"regex": "^RR[LR]_RBSDAndLCAWrnng$"},
+        "on": {"off_prefix": ["no", "off", "inactive", "none", "0"]}
+      }
+    }
+  },
+  "objects": {
+    "prefix_regex": "m_behaviorLaneChangeWarningBsd\\.",
+    "slot_regex": "_m_relevantObjects\\._m_memory\\._m_values\\._(\\d+)_\\.RelevantObject\\._\\._m_(\\w+)$",
+    "used_regex": "_m_relevantObjects\\._m_usedElements$",
+    "fields": ["handle", "dx", "dy", "vx", "vy", "width", "length", "yawAngle"],
+    "note": "dx/dy = front corner of the target in ego coordinates (not the centre). The behaviour instance is shared by both sides; the right side evaluates with dy inverted."
+  },
+  "zone": {
+    "line_f_m": 0.8828,
+    "note": "BSD inner vertical line F = 0.5*min ego width + LyNear; replace with the value of the actual parameter set"
+  }
+}

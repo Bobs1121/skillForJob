@@ -16,6 +16,12 @@ skills/
 │   ├── profiles/
 │   ├── references/
 │   └── scripts/
+├── mf4-adas-signal-analysis/       # MF4 实车数据抽取分析 Skill
+│   ├── SKILL.md
+│   ├── README.md
+│   ├── profiles/
+│   ├── references/
+│   └── scripts/
 └── radar-sim-simulation/           # Selena 雷达仿真 Skill
     ├── SKILL.md                    # Agent Skill 主入口
     ├── README.md                   # Skill 内部使用说明
@@ -164,6 +170,7 @@ Skill 会恢复上一次确认的代码仓、Selena 来源、Runtime、目标、
 |-------|------|------|
 | code-review | `/review` | 自适应三层结构化代码审查 |
 | bosch-data-transfert | 数据/arbe 一键 | 数据准备 + arbe 切分支/编译/启动一体化 |
+| mf4-adas-signal-analysis | MF4 数据分析 | 通道检索、报警段提取、目标轨迹、曲率 what-if 分析 |
 | requirement-code-traceability | `$requirement-code-traceability` | 需求问答、代码一致性检查与实施方案 |
 | radar-sim-simulation | `$radar-sim-simulation` | 基于当前代码环境静默配置、提交和跟踪 Selena 仿真 |
 
